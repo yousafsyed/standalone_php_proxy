@@ -16,7 +16,7 @@ class Proxy implements MessageComponentInterface
         // Store the new connection to send messages to later
         $this->clients->attach($conn);
         
-        echo "New connection! ({$conn->resourceId})\n";
+        echo "New request! ({$conn->resourceId})\n";
     }
     
     public function onMessage(ConnectionInterface $from, $msg) {
@@ -25,14 +25,17 @@ class Proxy implements MessageComponentInterface
         // echo sprintf('Connection %d sending message "%s" to %d other connection%s' . "\n"
         //     , $from->resourceId, $msg, $numRecv, $numRecv == 1 ? '' : 's');
         //echo $msg;
-        $from->send("req recieved");
-        $this->handle_request($msg);
+        $from->send($this->handle_request($msg));
+        
         $from->close();
-        foreach ($this->clients as $client) {
-            
-            // The sender is not the receiver, send to each client connected
-            $client->send($msg);
-        }
+        
+        // foreach ($this->clients as $client) {
+        
+        //     // The sender is not the receiver, send to each client connected
+        //     $client->send($msg);
+        // }
+        
+        
     }
     
     public function onClose(ConnectionInterface $conn) {
@@ -40,7 +43,7 @@ class Proxy implements MessageComponentInterface
         // The connection is closed, remove it, as we can no longer send it messages
         $this->clients->detach($conn);
         
-        echo "Connection {$conn->resourceId} has disconnected\n";
+        echo "Request {$conn->resourceId} has completed\n";
     }
     
     public function onError(ConnectionInterface $conn, \Exception $e) {
@@ -50,7 +53,8 @@ class Proxy implements MessageComponentInterface
     }
     
     public function handle_request($req) {
-        echo $req;
+        
+        $headers = $req;
         $req = explode("\n", $req);
         
         $HTTP_INFO = explode(" ", $req[0]);
@@ -58,10 +62,19 @@ class Proxy implements MessageComponentInterface
         $reqUrl = $HTTP_INFO[1];
         $trimmed_array = array_map('trim', $req);
         unset($req[0]);
-        print_r($req);
-        $data = array();
-        $this->parse_raw_http_request($data);
-        print_r($data);
+        
+        $headers = $this->http_parse_headers($headers);
+        $headersArray =array();
+        unset($headers['Host']);
+        unset($headers['User-Agent']);
+        unset($headers['Accept']);
+        unset($headers['Proxy-Connection']);
+        foreach($headers as $key => $header){
+
+            $headersArray[] = $key.": ".$header;
+        }
+
+        return $this->get_page($reqUrl, $headersArray);
         
         // $req = explode(PHP_EOL,$req);
         
@@ -69,49 +82,70 @@ class Proxy implements MessageComponentInterface
         
         
     }
-    public function parse_raw_http_request(array & $a_data) {
-        
-        // read incoming data
-        $input = file_get_contents('php://input');
-        
-        // grab multipart boundary from content type header
-        preg_match('/boundary=(.*)$/', $_SERVER['CONTENT_TYPE'], $matches);
-        
-        // content type is probably regular form-encoded
-        if (!count($matches)) {
-            
-            // we expect regular puts to containt a query string containing data
-            parse_str(urldecode($input) , $a_data);
-            return $a_data;
-        }
-        
-        $boundary = $matches[1];
-        
-        // split content by boundary and get rid of last -- element
-        $a_blocks = preg_split("/-+$boundary/", $input);
-        array_pop($a_blocks);
-        
-        // loop data blocks
-        foreach ($a_blocks as $id => $block) {
-            if (empty($block)) continue;
-            
-            // you'll have to var_dump $block to understand this and maybe replace \n or \r with a visibile char
-            
-            // parse uploaded files
-            if (strpos($block, 'application/octet-stream') !== FALSE) {
-                
-                // match "name", then everything after "stream" (optional) except for prepending newlines
-                preg_match("/name=\"([^\"]*)\".*stream[\n|\r]+([^\n\r].*)?$/s", $block, $matches);
-                $a_data['files'][$matches[1]] = $matches[2];
-            }
-            
-            // parse all other fields
-            else {
-                
-                // match "name" and optional value in between newline sequences
-                preg_match('/name=\"([^\"]*)\"[\n|\r]+([^\n\r].*)?\r$/s', $block, $matches);
-                $a_data[$matches[1]] = $matches[2];
+    function http_parse_headers($header) {
+        $retVal = array();
+        $fields = explode("\r\n", preg_replace('/\x0D\x0A[\x09\x20]+/', ' ', $header));
+        foreach ($fields as $field) {
+            if (preg_match('/([^:]+): (.+)/m', $field, $match)) {
+                $match[1] = preg_replace('/(?<=^|[\x09\x20\x2D])./e', 'strtoupper("\0")', strtolower(trim($match[1])));
+                if (isset($retVal[$match[1]])) {
+                    $retVal[$match[1]] = array(
+                        $retVal[$match[1]],
+                        $match[2]
+                    );
+                } 
+                else {
+                    $retVal[$match[1]] = trim($match[2]);
+                }
             }
         }
+        return $retVal;
+    }
+    
+    public function get_proxy() {
+        $proxy = file("proxy-list.txt");
+        
+        return $proxy[array_rand($proxy) ];
+    }
+    
+    public function get_page($url, $headers) {
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_HEADER, 0);
+        
+        // return headers 0 no 1 yes
+        //curl_setopt($ch, CURLOPT_HTTPHEADER, array('Accept: application/json, text/javascript, */*','Accept-Encoding: gzip,deflate,sdch' ,'Content-type: application/xml','X-TS-AJAX-Request: true','X-Requested-With: XMLHttpRequest'));
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        
+        print_r( $headers);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        
+        curl_setopt($ch, CURLOPT_PROXY, $this->get_proxy());
+        // return page 1:yes
+        //curl_setopt($ch, CURLOPT_REFERER, 'https://myaccount.stubhub.com/myaccount/listings');
+        curl_setopt($ch, CURLOPT_TIMEOUT, 20);
+        
+        // http request timeout 20 seconds
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        
+        // Follow redirects, need this if the url changes
+        curl_setopt($ch, CURLOPT_MAXREDIRS, 4);
+        
+        //if http server gives redirection responce
+        curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.8.1.7) Gecko/20070914 Firefox/2.0.0.7");
+        
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        
+        // false for https
+        curl_setopt($ch, CURLOPT_ENCODING, "gzip");
+        curl_setopt($ch, CURLOPT_HEADER, 1);
+        // the page encoding
+        //curl_setopt($ch, CURLOPT_COOKIESESSION, true);
+        $data = curl_exec($ch);
+        
+        // execute the http request
+        curl_close($ch);
+        
+        return $data;
     }
 }
