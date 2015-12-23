@@ -1,8 +1,7 @@
 <?php
-
 require './vendor/autoload.php';
 use Ratchet\Server\IoServer;
-use MyApp\Proxy;
+use BrokerGenius\Proxy;
 error_reporting(0);
 $port = 8080;
 $server = IoServer::factory(new Proxy() , $port);

@@ -1,5 +1,5 @@
 <?php
-namespace MyApp;
+namespace BrokerGenius;
 use Ratchet\MessageComponentInterface;
 use Ratchet\ConnectionInterface;
 
@@ -59,21 +59,27 @@ class Proxy implements MessageComponentInterface
         
         $HTTP_INFO = explode(" ", $req[0]);
         $reqType = $HTTP_INFO[0];
-        $reqUrl = $HTTP_INFO[1];
+        if ($reqType == "CONNECT") {
+            $reqUrl = "https://" . $HTTP_INFO[1];
+        } 
+        else {
+            $reqUrl = $HTTP_INFO[1];
+        }
+        
         $trimmed_array = array_map('trim', $req);
         unset($req[0]);
         
         $headers = $this->http_parse_headers($headers);
-        $headersArray =array();
+        $headersArray = array();
         unset($headers['Host']);
         unset($headers['User-Agent']);
         unset($headers['Accept']);
         unset($headers['Proxy-Connection']);
-        foreach($headers as $key => $header){
-
-            $headersArray[] = $key.": ".$header;
+        foreach ($headers as $key => $header) {
+            
+            $headersArray[] = $key . ": " . $header;
         }
-
+        
         return $this->get_page($reqUrl, $headersArray);
         
         // $req = explode(PHP_EOL,$req);
@@ -117,10 +123,11 @@ class Proxy implements MessageComponentInterface
         //curl_setopt($ch, CURLOPT_HTTPHEADER, array('Accept: application/json, text/javascript, */*','Accept-Encoding: gzip,deflate,sdch' ,'Content-type: application/xml','X-TS-AJAX-Request: true','X-Requested-With: XMLHttpRequest'));
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
         
-        print_r( $headers);
+        // print_r( $headers);
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         
         curl_setopt($ch, CURLOPT_PROXY, $this->get_proxy());
+        
         // return page 1:yes
         //curl_setopt($ch, CURLOPT_REFERER, 'https://myaccount.stubhub.com/myaccount/listings');
         curl_setopt($ch, CURLOPT_TIMEOUT, 20);
@@ -139,6 +146,7 @@ class Proxy implements MessageComponentInterface
         // false for https
         curl_setopt($ch, CURLOPT_ENCODING, "gzip");
         curl_setopt($ch, CURLOPT_HEADER, 1);
+        
         // the page encoding
         //curl_setopt($ch, CURLOPT_COOKIESESSION, true);
         $data = curl_exec($ch);
