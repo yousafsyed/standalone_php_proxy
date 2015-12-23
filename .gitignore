@@ -1,0 +1,7 @@
+.phpintel/*
+/vendor
+/node_modules
+Homestead.yaml
+Homestead.json
+npm-debug.log
+/storage/app/*
