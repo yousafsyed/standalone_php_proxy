@@ -9,6 +9,14 @@ class Proxy implements MessageComponentInterface
     private $guzzle;
     private $params;
     private $current_url;
+    private $consoleColor = array(
+        'green' => "\033[32m"
+    );
+    private $endColor = "\033[0m";
+    private $time;
+    private $reqtype;
+    private $startTime;
+    private $timeElapsed;
     public function __construct() {
         $this->clients = new \SplObjectStorage;
         $this->guzzle = new \GuzzleHttp\Client();
@@ -22,17 +30,22 @@ class Proxy implements MessageComponentInterface
         // Store the new connection to send messages to later
         $this->clients->attach($conn);
         
-        echo "New request! ({$conn->resourceId})\n";
+        //echo "New request! ({$conn->resourceId})\n";
+        
+        
     }
     
     public function onMessage(ConnectionInterface $from, $msg) {
         $numRecv = count($this->clients) - 1;
         
+        $this->startTime = microtime(true);
+        
         // echo sprintf('Connection %d sending message "%s" to %d other connection%s' . "\n"
         //     , $from->resourceId, $msg, $numRecv, $numRecv == 1 ? '' : 's');
         //echo $msg;
-        $from->send($this->handle_request($msg));
-        
+        $message = $this->handle_request($msg);
+        $from->send($message);
+        $this->log_request($this->reqtype, $this->current_url, 'green');
         $from->close();
         
         // foreach ($this->clients as $client) {
@@ -48,8 +61,10 @@ class Proxy implements MessageComponentInterface
         
         // The connection is closed, remove it, as we can no longer send it messages
         $this->clients->detach($conn);
+        $this->time_elapsed_secs = microtime(true) - $this->startTime;
         
-        echo "Request {$conn->resourceId} has completed\n";
+        //echo "Request {$conn->resourceId} has completed\n";
+        echo " " . $this->time_elapsed_secs . " ms" . PHP_EOL;
     }
     
     public function onError(ConnectionInterface $conn, \Exception $e) {
@@ -58,30 +73,43 @@ class Proxy implements MessageComponentInterface
         $conn->close();
     }
     
+    private function log_request($type, $url, $color) {
+        $this->time = date('m/d/Y H:i:s');
+        echo $this->time . " " . $this->consoleColor[$color] . " " . $type . $this->endColor . " " . "$url";
+    }
+    
     public function handle_request($req) {
         
         $headers = $req;
+
         $req = explode("\n", $req);
         
         $HTTP_INFO = explode(" ", $req[0]);
         $reqType = $HTTP_INFO[0];
+        $this->reqtype = $reqType;
         if ($reqType == "CONNECT") {
             $reqUrl = "https://" . $HTTP_INFO[1];
         } 
         else {
             $reqUrl = $HTTP_INFO[1];
         }
-        $this->$current_url = $reqUrl;
+        $reqUrl = str_replace('http://', 'https://', $reqUrl);
+        
+        $this->current_url = $reqUrl;
         $trimmed_array = array_map('trim', $req);
         unset($req[0]);
         
         $headers = $this->http_parse_headers($headers);
         $headersArray = array();
+        
         unset($headers['Host']);
         unset($headers['User-Agent']);
         unset($headers['Accept']);
         unset($headers['Proxy-Connection']);
         unset($headers['Content-Length']);
+        foreach ($headers as $key => $value) {
+            $headersArray[] = $key.": ".trim($value);
+        }
         
         $url = $reqUrl;
         
@@ -100,27 +128,30 @@ class Proxy implements MessageComponentInterface
         
         //print_r($postData);
         
-        if ($reqType == "POST") {
-            
-            $this->params['body'] = $postData;
-            $data = $this->guzzle->post($url, $this->params);
-        } 
-        elseif ($reqType == "PUT") {
-            $data = $this->guzzle->put($url, $this->params);
-        } 
-        elseif ($reqType == "DELETE") {
-            $data = $this->guzzle->delete($url, $this->params);
-        } 
-        elseif ($reqType == "GET") {
-            
-            $data = $this->guzzle->get($url, $this->params);
-        } 
-        else {
-            $data = $this->guzzle->get($url, $this->params);
-        }
+        // if ($reqType == "POST") {
+        
+        //     $this->params['body'] = $postData;
+        //     $data = $this->guzzle->post($url, $this->params);
+        // }
+        // elseif ($reqType == "PUT") {
+        //     $data = $this->guzzle->put($url, $this->params);
+        // }
+        // elseif ($reqType == "DELETE") {
+        //     $data = $this->guzzle->delete($url, $this->params);
+        // }
+        // elseif ($reqType == "GET") {
+        
+        //     $data = $this->guzzle->get($url, $this->params);
+        // }
+        // else {
+        //     echo $this->params;
+        //     $data = $this->guzzle->get($url, $this->params);
+        // }
         
         //var_dump($data->getBody(true));
-        return $data->getBody(true);
+  
+        
+        return $this->get_page($reqUrl, $headersArray);
         
         // $req = explode(PHP_EOL,$req);
         
@@ -166,7 +197,7 @@ class Proxy implements MessageComponentInterface
         // print_r( $headers);
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         
-        curl_setopt($ch, CURLOPT_PROXY, $this->get_proxy());
+        curl_setopt($ch, CURLOPT_PROXY, '203.156.126.38:8080');
         
         // return page 1:yes
         //curl_setopt($ch, CURLOPT_REFERER, 'https://myaccount.stubhub.com/myaccount/listings');
@@ -185,7 +216,7 @@ class Proxy implements MessageComponentInterface
         
         // false for https
         curl_setopt($ch, CURLOPT_ENCODING, "gzip");
-        curl_setopt($ch, CURLOPT_HEADER, 1);
+        //curl_setopt($ch, CURLOPT_HEADER, 1);
         
         // the page encoding
         //curl_setopt($ch, CURLOPT_COOKIESESSION, true);
