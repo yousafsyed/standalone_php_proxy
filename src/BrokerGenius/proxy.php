@@ -6,9 +6,15 @@ use Ratchet\ConnectionInterface;
 class Proxy implements MessageComponentInterface
 {
     protected $clients;
-    
+    private $guzzle;
+    private $params;
+    private $current_url;
     public function __construct() {
         $this->clients = new \SplObjectStorage;
+        $this->guzzle = new \GuzzleHttp\Client();
+        $this->params = array(
+            'exceptions' => false
+        );
     }
     
     public function onOpen(ConnectionInterface $conn) {
@@ -65,7 +71,7 @@ class Proxy implements MessageComponentInterface
         else {
             $reqUrl = $HTTP_INFO[1];
         }
-        
+        $this->$current_url = $reqUrl;
         $trimmed_array = array_map('trim', $req);
         unset($req[0]);
         
@@ -75,12 +81,46 @@ class Proxy implements MessageComponentInterface
         unset($headers['User-Agent']);
         unset($headers['Accept']);
         unset($headers['Proxy-Connection']);
-        foreach ($headers as $key => $header) {
+        unset($headers['Content-Length']);
+        
+        $url = $reqUrl;
+        
+        $this->params['headers'] = $headers;
+        
+        // print_r($headers);
+        $data = "";
+        
+        if (strpos($headers['Content-Type'], "x-www-form-urlencoded") !== false) {
             
-            $headersArray[] = $key . ": " . $header;
+            $postData = $req[count($req) ];
+            $array = array();
+            parse_str($postData, $array);
+            $postData = $array;
         }
         
-        return $this->get_page($reqUrl, $headersArray);
+        //print_r($postData);
+        
+        if ($reqType == "POST") {
+            
+            $this->params['body'] = $postData;
+            $data = $this->guzzle->post($url, $this->params);
+        } 
+        elseif ($reqType == "PUT") {
+            $data = $this->guzzle->put($url, $this->params);
+        } 
+        elseif ($reqType == "DELETE") {
+            $data = $this->guzzle->delete($url, $this->params);
+        } 
+        elseif ($reqType == "GET") {
+            
+            $data = $this->guzzle->get($url, $this->params);
+        } 
+        else {
+            $data = $this->guzzle->get($url, $this->params);
+        }
+        
+        //var_dump($data->getBody(true));
+        return $data->getBody(true);
         
         // $req = explode(PHP_EOL,$req);
         
