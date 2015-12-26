@@ -1,5 +1,5 @@
 <?php
-namespace BrokerGenius;
+namespace YousafSyed;
 use Ratchet\MessageComponentInterface;
 use Ratchet\ConnectionInterface;
 
