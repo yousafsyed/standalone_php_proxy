@@ -1,5 +1,5 @@
 # standalone_php_proxy
-Standalone proxy server in PHP sockets, I am using Ratchet PHP library and Guzzle to route the requests. Idea was if I can make HTTP Proxy Server in php to get more control over proxy and custom logic. Currently it only supports http requests you can choose port of your own choice plus if you want to make it public or private.  This is a standard HTTP Proxy so you can use in browser. By default its only working for localhost, but you can allow public ip's. 
+Standalone proxy server in PHP sockets, I am  Guzzle to route the requests. Idea was if I can make HTTP Proxy Server in php to get more control over proxy and custom logic. Currently it only supports http requests you can choose port of your own choice plus if you want to make it public or private.  This is a standard HTTP Proxy so you can use in browser. By default its only working for localhost, but you can allow public ip's. 
 
 ## Todo
 1. Pacakage availble via composer
