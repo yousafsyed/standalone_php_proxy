@@ -8,11 +8,13 @@ Standalone proxy server in PHP sockets, I am using Guzzle to route the requests.
 4. Parse FormData
 
 ### How To Install?
+Define package in your composer.json file as require dependency
+```json
+   "require": {
+        "yousafsyed/standalone_php_proxy": "^1.0@dev"
+    }
 ```
-$ php composer install
-$ php composer update
-$ php composer dump-autoload
-```
+
 ### How to Run?
 ```
 $ php server.php
