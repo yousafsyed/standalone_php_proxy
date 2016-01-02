@@ -1,10 +1,18 @@
 {
-    "autoload": {
-        "psr-0": {
-            "YousafSyed": "src"
-        }
-    },
+    "name": "yousafsyed/standalone_php_proxy",
+    "description": "Standalone proxy server in PHP sockets, I am Guzzle to route the requests. Idea was if I can make HTTP Proxy Server in php to get more control over proxy and custom logic. Currently it only supports http requests you can choose port of your own choice plus if you want to make it public or private. This is a standard HTTP Proxy so you can use in browser. By default its only working for localhost, but you can allow public ip's.",
+    "license": "MIT",
+    "keywords": ["proxy server", "proxy", "http"],
+    "authors": [{
+        "name": "Yousaf Syed",
+        "email": "mmesunny@gmail.com"
+    }],
     "require": {
         "guzzlehttp/guzzle": "~5.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "YousafSyed\\": "src/"
+        }
     }
 }
