@@ -8,16 +8,17 @@
         "email": "mmesunny@gmail.com"
     }],
     "require": {
-        "guzzlehttp/guzzle": "~5.0"
+        "guzzlehttp/guzzle": "~5.0",
+        "yousafsyed/standalone_php_proxy": "^1.0@dev"
     },
     "autoload": {
-        "psr-4": {
+        "psr-0": {
             "YousafSyed\\": "src/"
         }
     },
     "extra": {
         "branch-alias": {
-            "dev-master": "1.0-dev"
+            "dev-master": "1.0"
         }
     },
     "minimum-stability": "dev",
