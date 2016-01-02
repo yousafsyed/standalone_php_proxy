@@ -14,7 +14,20 @@ Define package in your composer.json file as require dependency
         "yousafsyed/standalone_php_proxy": "^1.0@dev"
     }
 ```
-
+Now update/install composer dependencies
+```
+   $ composer install
+   $ composer update
+```
+### Example
+Create a file server.php
+```php
+   require "./vendor/autoload.php";
+   use YousafSyed\ProxyServer;
+   $server = new ProxyServer(); // optional parameters for port and host like this new ProxyServer('8080','localhost')
+   // finally run the server
+   $server->run();
+```
 ### How to Run?
 ```
 $ php server.php
