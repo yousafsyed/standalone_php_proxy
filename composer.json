@@ -8,7 +8,7 @@
         "email": "mmesunny@gmail.com"
     }],
     "require": {
-        "guzzlehttp/guzzle": "~5.0",
+        "guzzlehttp/guzzle": "~5.0"
     },
     "autoload": {
         "psr-0": {
