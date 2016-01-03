@@ -11,7 +11,7 @@ Standalone proxy server in PHP sockets, I am using Guzzle to route the requests.
 Define package in your composer.json file as require dependency
 ```json
    "require": {
-        "yousafsyed/standalone_php_proxy": "^1.0"
+        "yousafsyed/standalone_php_proxy": "^v1.0"
     }
 ```
 Now update/install composer dependencies
